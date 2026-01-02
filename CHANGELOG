@@ -1,0 +1,9 @@
+2026-01-02  Robert Charusta  <rch-public@posteo.net>
+
+	* go-template-helper-mode.el: Initial release.
+	(go-template-helper-mode): New minor mode.
+	(go-template-helper--font-lock-comments): New matcher for {{/* ... */}}.
+	(go-template-helper--keywords): Add font-lock rules for delimiters,
+	variables, keywords, and builtins.
+	(go-template-helper--enable): Add keywords and refontify.
+	(go-template-helper--disable): Remove keywords and refontify.

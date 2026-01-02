@@ -1,0 +1,122 @@
+#+title: go-template-helper-mode
+#+options: toc:t
+
+A small Emacs minor mode that overlays Go /text/template/ (Go templates)
+syntax highlighting on top of another major mode (commonly YAML, but not
+limited to it).
+
+It is especially useful for files that embed Go templates inside a
+""host"" language, such as:
+- YAML manifests with templating
+- configuration files containing ={{ ... }}= snippets
+- Helm charts (Kubernetes manifests under =templates/=)
+
+* Features
+
+- Highlights Go template delimiters (= {{ = and = }} =)
+- Highlights =$variables=
+- Highlights common template keywords (=if=, =range=, =with=, ...)
+- Highlights common builtins (=printf=, =len=, ...)
+- Highlights multiline template comments: ={{/* ... */}}=
+- Lightweight: regex font-lock rules only; no parsing, no indentation
+  changes
+
+* Requirements
+
+- Emacs 28.1+
+- No external Emacs packages required
+
+Note: This mode currently duplicates a small set of keywords/builtins.
+If you also use a full Go template major mode, you may want to keep the
+lists in sync.
+
+* Installation
+
+** Manual
+
+1. Put =go-template-helper-mode.el= on your =load-path=.
+2. In your init file:
+
+#+begin_src elisp
+(require 'go-template-helper-mode)
+#+end_src
+
+** With =use-package=
+
+#+begin_src elisp
+(use-package go-template-helper-mode
+  :load-path "/path/to/repo/"
+  :commands (go-template-helper-mode))
+#+end_src
+
+* Usage
+
+Enable it in buffers where Go templates are embedded:
+
+#+begin_src elisp
+(add-hook 'yaml-mode-hook #'go-template-helper-mode)
+#+end_src
+
+Enable only in selected files/directories:
+
+#+begin_src elisp
+(defun my-go-template-helper-maybe-enable ()
+  "Enable `go-template-helper-mode' in templated YAML-like files."
+  (when (and buffer-file-name
+             (string-match-p
+              (rx "/templates/" (* any) "." (or "yaml" "yml" "tpl") eos)
+              buffer-file-name))
+    (go-template-helper-mode 1)))
+
+(add-hook 'yaml-mode-hook #'my-go-template-helper-maybe-enable)
+#+end_src
+
+* Example configuration (enable only in templates/)
+
+If you mostly use Go templates inside YAML (for example in Helm charts),
+you can enable the mode only for files under a =templates/= directory and
+with typical template extensions:
+
+#+begin_src elisp
+(defun my/go-template-helper-enable ()
+  "Enable go-template-helper-mode when appropriate.
+Activates `go-template-helper-mode' if the buffer's file is located in a
+templates/ directory and has a .yaml, .yml, or .tpl extension."
+  (when (and buffer-file-name
+             (string-match-p
+              "/templates/.*\\(?:\\.ya?ml\\|\\.tpl\\)\\'"
+              buffer-file-name))
+    (require 'go-template-helper-mode)
+    (go-template-helper-mode 1)))
+
+(use-package go-template-helper-mode
+  :load-path "~/.emacs.d/lisp/go-template-helper-mode"
+  :hook (yaml-mode . my/go-template-helper-enable)
+  :defer t)
+#+end_src
+
+Adjust the path, directory name, and extensions to match your project
+layout.
+
+* Helm charts
+
+In Helm charts, templates usually live under =charts/<name>/templates/=
+and are often YAML with Go template constructs.  A common setup is to
+enable =go-template-helper-mode= in =yaml-mode= buffers visiting files under
+a =templates/= directory (see example above).
+
+* How it works
+
+When enabled, the mode appends a small set of =font-lock= keywords to the
+current buffer and requests re-fontification (=font-lock-flush=).
+Disabling removes the keywords and flushes again.
+
+* Limitations
+
+- Purely cosmetic overlay: no syntax/indentation changes in the host
+  major mode
+- Regex-based matching may produce false positives in edge cases
+- Comment highlighting requires a complete ={{/* ... */}}= pair
+
+* License
+GPL-3.0-or-later.  See =COPYING=.
