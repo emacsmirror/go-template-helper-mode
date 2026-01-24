@@ -5,7 +5,7 @@
 ;; Author: Robert Charusta <rch-public@posteo.net>
 ;; Maintainer: Robert Charusta <rch-public@posteo.net>
 ;; URL: https://codeberg.org/rch/go-template-helper-mode
-;; Version: 1.0.2
+;; Version: 1.0.3
 ;; Keywords: tools, faces
 ;; Package-Requires: ((emacs "28.1"))
 

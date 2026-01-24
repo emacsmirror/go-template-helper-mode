@@ -43,6 +43,16 @@ lists in sync.
 
 ** With =use-package=
 
+If you have it installed from MELPA:
+
+#+begin_src elisp
+(use-package go-template-helper-mode
+  :ensure t
+  :hook (yaml-mode . my/go-template-helper-enable))
+#+end_src
+
+If you're installing from a local checkout:
+
 #+begin_src elisp
 (use-package go-template-helper-mode
   :load-path "/path/to/repo/"
@@ -91,8 +101,7 @@ templates/ directory and has a .yaml, .yml, or .tpl extension."
 
 (use-package go-template-helper-mode
   :load-path "~/.emacs.d/lisp/go-template-helper-mode"
-  :hook (yaml-mode . my/go-template-helper-enable)
-  :defer t)
+  :hook (yaml-mode . my/go-template-helper-enable))
 #+end_src
 
 Adjust the path, directory name, and extensions to match your project

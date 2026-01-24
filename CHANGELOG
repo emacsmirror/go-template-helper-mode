@@ -3,6 +3,9 @@
 	* go-template-helper-mode.el: Improve header summary for Helm/YAML discoverability.
 	Version: Bump to 1.0.2.
 
+	* README.org: Document MELPA installation and simplify use-package example.
+	Version: Bump to 1.0.3.
+
 2026-01-02  Robert Charusta  <rch-public@posteo.net>
 
 	* go-template-helper-mode.el: Initial release.
