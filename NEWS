@@ -1,0 +1,43 @@
+go-template-helper-mode NEWS -- history of user-visible changes. -*- outline -*-
+
+Copyright (C) 2026 Robert Charusta
+
+* Noteworthy changes in release 2.0.0 (unreleased)
+
+** Incompatible changes
+
+  - Require go-template-mode 2.0.0 or later for shared template
+    fontification.
+
+  - Restrict template faces to complete `{{ ... }}` actions.  Ordinary host
+    text that resembles template keywords, functions, or variables is no
+    longer highlighted.
+
+** New features
+
+  - Highlight the current Go template action words, constants, predefined
+    functions, fields, variables, strings, character constants, trim markers,
+    and multiline comments through the shared owner implementation.
+
+  - Preserve host-language faces around actions, including actions embedded
+    in quoted HTML or YAML values, and restore host faces when the helper is
+    disabled.
+
+** Bug fixes
+
+  - Clear and restore affected faces after narrow edits to action delimiters.
+
+  - Remove helper fontification before a host major-mode change.
+
+* Noteworthy changes in release 1.0.3 (2026-01-24)
+
+** Documentation
+
+  - Document MELPA installation and Helm/YAML usage.
+
+* Noteworthy changes in release 1.0.0 (2026-01-02)
+
+** New features
+
+  - Add the initial minor mode with highlighting for template delimiters,
+    variables, selected keywords and functions, and multiline comments.

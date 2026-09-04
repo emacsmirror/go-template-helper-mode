@@ -24,65 +24,187 @@
 
 ;;; Commentary:
 
-;; Minimal ERT tests for go-template-helper-mode.
-;;
-;; These tests enable the mode in a temporary buffer, run font-lock, and
-;; assert that expected faces are applied.
+;; Integration tests for `go-template-helper-mode'.
 
 ;;; Code:
 
 (require 'ert)
+
+(defconst go-template-helper-test--auto-mode-alist-before-load
+  (copy-tree auto-mode-alist)
+  "Mode associations present before loading the helper.")
+
 (require 'go-template-helper-mode)
 
-(defun go-template-helper-test--has-face-p (pos face)
-  "Return non-nil if text at POS has FACE (symbol) applied."
-  (let ((f (get-text-property pos 'face)))
-    (cond
-     ((eq f face) t)
-     ((listp f) (memq face f))
-     (t nil))))
+(defconst go-template-helper-test--template-faces
+  '(font-lock-builtin-face
+    font-lock-comment-face
+    font-lock-constant-face
+    font-lock-keyword-face
+    font-lock-preprocessor-face
+    font-lock-string-face
+    font-lock-variable-name-face)
+  "Template faces checked by negative assertions.")
 
-(ert-deftest go-template-helper-mode-fontifies-basic-tokens ()
-  "Ensure delimiters, variables, keywords, builtins, and comments are fontified."
+(defun go-template-helper-test--face-p (pos face)
+  "Return non-nil when FACE is applied at POS."
+  (let ((value (get-char-property pos 'face)))
+    (if (listp value)
+        (memq face value)
+      (eq value face))))
+
+(defun go-template-helper-test--position (text &optional occurrence)
+  "Return the start of OCCURRENCE of TEXT in the current buffer."
+  (let ((remaining (or occurrence 1)))
+    (save-excursion
+      (goto-char (point-min))
+      (while (and (> remaining 0) (search-forward text nil t))
+        (setq remaining (1- remaining)))
+      (if (zerop remaining)
+          (- (point) (length text))
+        (ert-fail (format "Could not find occurrence %d of %S"
+                          (or occurrence 1) text))))))
+
+(defun go-template-helper-test--should-have-face
+    (text face &optional occurrence offset)
+  "Require TEXT at OCCURRENCE plus OFFSET to have FACE."
+  (let ((pos (+ (go-template-helper-test--position text occurrence)
+                (or offset 0))))
+    (unless (go-template-helper-test--face-p pos face)
+      (ert-fail (format "%S at %d has face %S, expected %S"
+                        text pos (get-char-property pos 'face) face)))))
+
+(defun go-template-helper-test--should-not-have-face
+    (text face &optional occurrence offset)
+  "Require TEXT at OCCURRENCE plus OFFSET not to have FACE."
+  (let ((pos (+ (go-template-helper-test--position text occurrence)
+                (or offset 0))))
+    (when (go-template-helper-test--face-p pos face)
+      (ert-fail (format "%S at %d unexpectedly has face %S"
+                        text pos face)))))
+
+(defun go-template-helper-test--should-have-no-template-face
+    (text &optional occurrence offset)
+  "Require TEXT at OCCURRENCE plus OFFSET to have no template face."
+  (let ((pos (+ (go-template-helper-test--position text occurrence)
+                (or offset 0))))
+    (dolist (face go-template-helper-test--template-faces)
+      (when (go-template-helper-test--face-p pos face)
+        (ert-fail (format "%S at %d unexpectedly has template face %S"
+                          text pos face))))))
+
+(defmacro go-template-helper-test--with-fontified (mode text &rest body)
+  "Insert TEXT, activate MODE and the helper, then evaluate BODY."
+  (declare (indent 2) (debug t))
+  `(with-temp-buffer
+     (rename-buffer (generate-new-buffer-name "go-template-helper-test"))
+     (insert ,text)
+     (funcall ,mode)
+     (let ((noninteractive nil))
+       (font-lock-mode 1))
+     (go-template-helper-mode 1)
+     (font-lock-ensure)
+     ,@body))
+
+(ert-deftest go-template-helper-mode-loads-only-shared-fontification ()
+  "Load shared fontification without activating the owner major mode."
+  (should (featurep 'go-template-mode-font-lock))
+  (should-not (featurep 'go-template-mode))
+  (should (equal auto-mode-alist
+                 go-template-helper-test--auto-mode-alist-before-load)))
+
+(ert-deftest go-template-helper-mode-fontifies-only-complete-actions ()
+  "Fontify representative shared syntax only inside complete actions."
+  (go-template-helper-test--with-fontified
+      #'fundamental-mode
+      "if printf $x {{break $x}}{{true}}{{slice .Values 0}}"
+    (go-template-helper-test--should-have-no-template-face "if")
+    (go-template-helper-test--should-have-no-template-face "printf")
+    (go-template-helper-test--should-have-no-template-face "$x" 1)
+    (go-template-helper-test--should-have-face
+     "break" 'font-lock-keyword-face)
+    (go-template-helper-test--should-have-face
+     "$x" 'font-lock-variable-name-face 2)
+    (go-template-helper-test--should-have-face
+     "true" 'font-lock-constant-face)
+    (go-template-helper-test--should-have-face
+     "slice" 'font-lock-builtin-face)))
+
+(ert-deftest go-template-helper-mode-preserves-and-restores-html-host ()
+  "Preserve HTML editing state and restore its string face on disable."
   (with-temp-buffer
+    (rename-buffer (generate-new-buffer-name "go-template-helper-test"))
+    (insert "<div class=\"prefix {{if .Enabled}} suffix\">text</div>")
+    (html-mode)
+    (let ((noninteractive nil))
+      (font-lock-mode 1))
+    (font-lock-ensure)
+    (go-template-helper-test--should-have-face
+     "if" 'font-lock-string-face)
+    (let ((host-mode major-mode)
+          (host-syntax (syntax-table))
+          (host-keymap (current-local-map))
+          (host-indent indent-line-function)
+          (host-comment-start comment-start)
+          (host-comment-end comment-end)
+          (host-font-lock-defaults font-lock-defaults))
+      (go-template-helper-mode 1)
+      (go-template-helper-mode 1)
+      (font-lock-ensure)
+      (should (eq major-mode host-mode))
+      (should (eq (syntax-table) host-syntax))
+      (should (eq (current-local-map) host-keymap))
+      (should (eq indent-line-function host-indent))
+      (should (equal comment-start host-comment-start))
+      (should (equal comment-end host-comment-end))
+      (should (equal font-lock-defaults host-font-lock-defaults))
+      (go-template-helper-test--should-have-face
+       "prefix" 'font-lock-string-face)
+      (go-template-helper-test--should-have-face
+       "if" 'font-lock-keyword-face)
+      (go-template-helper-test--should-not-have-face
+       "if" 'font-lock-string-face)
+      (go-template-helper-mode 0)
+      (go-template-helper-mode 0)
+      (go-template-helper-test--should-not-have-face
+       "if" 'font-lock-keyword-face)
+      (go-template-helper-test--should-have-face
+       "if" 'font-lock-string-face)
+      (should (eq major-mode host-mode))
+      (should (eq (syntax-table) host-syntax))
+      (should (eq (current-local-map) host-keymap))
+      (should (eq indent-line-function host-indent))
+      (should (equal comment-start host-comment-start))
+      (should (equal comment-end host-comment-end))
+      (should (equal font-lock-defaults host-font-lock-defaults)))))
+
+(ert-deftest go-template-helper-mode-recovers-after-delimiter-edit ()
+  "Clear and restore action faces after a narrow closing-delimiter edit."
+  (go-template-helper-test--with-fontified
+      #'fundamental-mode "before {{if .Enabled}} after"
+    (go-template-helper-test--should-have-face
+     "if" 'font-lock-keyword-face)
+    (let ((close (go-template-helper-test--position "}}")))
+      (delete-region close (+ close 2))
+      (font-lock-flush (1- close) (1+ close))
+      (font-lock-ensure (1- close) (1+ close))
+      (go-template-helper-test--should-have-no-template-face "{{")
+      (go-template-helper-test--should-have-no-template-face "if")
+      (goto-char close)
+      (insert "}}")
+      (font-lock-flush (1- close) (+ close 3))
+      (font-lock-ensure (1- close) (+ close 3))
+      (go-template-helper-test--should-have-face
+       "if" 'font-lock-keyword-face))))
+
+(ert-deftest go-template-helper-mode-cleans-up-on-major-mode-change ()
+  "Remove helper fontification before changing the host major mode."
+  (go-template-helper-test--with-fontified
+      #'text-mode "{{if .Enabled}}"
+    (go-template-helper-test--should-have-face
+     "if" 'font-lock-keyword-face)
     (fundamental-mode)
-    (font-lock-mode 1)
-    (insert "{{ if $x }} {{ printf \"hi\" }} {{/* c1\nc2 */}}\n")
-    (go-template-helper-mode 1)
-    (font-lock-ensure)
-
-    ;; Delimiter {{
-    (should (go-template-helper-test--has-face-p (point-min) 'font-lock-preprocessor-face))
-
-    ;; Keyword "if"
-    (should (go-template-helper-test--has-face-p (+ (point-min) 3) 'font-lock-keyword-face))
-
-    ;; Variable "$x"
-    (should (go-template-helper-test--has-face-p (+ (point-min) 6) 'font-lock-variable-name-face))
-
-    ;; Builtin "printf"
-    (should (go-template-helper-test--has-face-p (+ (point-min) 17) 'font-lock-builtin-face))
-
-    ;; Comment content should be comment-faced somewhere inside {{/* ... */}}
-    (let ((comment-start (string-match "{{/\\*" (buffer-string))))
-      (should comment-start)
-      (should (go-template-helper-test--has-face-p (+ (point-min) comment-start)
-                                                  'font-lock-comment-face)))))
-
-(ert-deftest go-template-helper-mode-disable-removes-fontification ()
-  "Ensure disabling the mode removes its fontification after refontification."
-  (with-temp-buffer
-    (fundamental-mode)
-    (font-lock-mode 1)
-    (insert "{{ if $x }}\n")
-    (go-template-helper-mode 1)
-    (font-lock-ensure)
-    (should (go-template-helper-test--has-face-p (point-min) 'font-lock-preprocessor-face))
-
-    (go-template-helper-mode 0)
-    (font-lock-flush)
-    (font-lock-ensure)
-    (should-not (get-text-property (point-min) 'face))))
+    (go-template-helper-test--should-have-no-template-face "if")))
 
 (provide 'go-template-helper-mode-test)
 ;;; go-template-helper-mode-test.el ends here

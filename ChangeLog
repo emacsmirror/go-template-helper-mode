@@ -1,0 +1,40 @@
+2026-09-04  Robert Charusta  <rch-public@posteo.net>
+
+	Delegate template fontification to go-template-mode 2.0.0.
+
+	* go-template-helper-mode.el (go-template-helper-mode): Call the shared
+	fontification install and uninstall functions.  Remove the private
+	matcher, vocabulary, and lifecycle helpers.  Bump version to 2.0.0 and
+	require go-template-mode 2.0.0.
+	* tests/go-template-helper-mode-test.el: Replace offset-based lexical
+	tests with action-scope, host-preservation, lifecycle, and incremental
+	refontification integration tests.
+	* Makefile (GO_TEMPLATE_MODE_DIR, EMACS_LOAD_PATH): New variables.
+	Compile and test against an overridable owner checkout.
+	* README.org: Document the shared dependency, host-mode behavior, file
+	association precedence, installation, usage, development commands, and
+	the manual YAML/Helm visual check.
+	* tests/font-lock-manual.yaml: New file.  Add a manual visual
+	regression fixture for YAML host integration.
+	* PROVENANCE.md: New file.  Record source history and the helper's
+	implementation boundary.
+	* NEWS: New file.  Record user-visible release changes.
+	* ChangeLog: Rename from CHANGELOG for GNU file-name conventions.
+
+2026-01-24  Robert Charusta  <rch-public@posteo.net>
+
+	* go-template-helper-mode.el: Improve header summary for Helm/YAML discoverability.
+	Version: Bump to 1.0.2.
+
+	* README.org: Document MELPA installation and simplify use-package example.
+	Version: Bump to 1.0.3.
+
+2026-01-02  Robert Charusta  <rch-public@posteo.net>
+
+	* go-template-helper-mode.el: Initial release.
+	(go-template-helper-mode): New minor mode.
+	(go-template-helper--font-lock-comments): New matcher for {{/* ... */}}.
+	(go-template-helper--keywords): Add font-lock rules for delimiters,
+	variables, keywords, and builtins.
+	(go-template-helper--enable): Add keywords and refontify.
+	(go-template-helper--disable): Remove keywords and refontify.

@@ -1,0 +1,63 @@
+# Manual visual regression fixture for go-template-helper-mode.
+#
+# Open this file in yaml-mode and enable go-template-helper-mode. It is a
+# fontification fixture, not an executable chart: referenced values and
+# functions do not need to exist, and the final action is intentionally
+# incomplete.
+#
+# Expected behavior:
+#
+# 1. YAML faces remain visible outside complete {{ ... }} actions.
+# 2. Complete actions override YAML string, comment, and block-scalar faces.
+# 3. Ordinary if, printf, and $outside text receives no template-specific face.
+# 4. Disabling go-template-helper-mode restores the original YAML faces.
+# 5. Standard printf receives its template builtin face. Helm and Sprig
+#    function names remain at the action's default face.
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: '{{printf "%s-config" .Release.Name}}'
+  labels:
+    app.kubernetes.io/name: "manual-font-lock-check"
+    enabled: "{{if .Values.enabled}}true{{else}}false{{end}}"
+  annotations:
+    example.org/message: "prefix {{with .Values.message}}{{.}}{{else}}none{{end}} suffix"
+
+# Ordinary YAML text that resembles template syntax stays host-owned.
+ordinaryWords: "if range with end printf slice eq len $outside"
+ordinaryBoolean: true
+ordinaryNull: null
+
+# A complete action overrides the YAML comment face only inside the action.
+# Debug state: {{if .Values.debug}}enabled{{else}}disabled{{end}}
+
+# A whole-action template comment also overrides the YAML comment face.
+# {{/* Template comment with if, printf, $value, and key: value. */}}
+
+data:
+  # YAML block scalars keep their string face outside complete actions.
+  rendered-message: |
+    prefix {{printf "%s" .Values.message}} suffix
+    {{printf "%s" "delimiter-looking }} text remains string data"}}
+
+  # These common Helm/Sprig names are intentionally not standard Go template
+  # predefined functions. Their arguments still receive shared template faces.
+  helm-and-sprig: |
+    {{default "fallback" .Values.name | quote}}
+    {{include "chart.fullname" .}}
+    {{toYaml .Values.extra | nindent 4}}
+
+# A compact Helm control block checks actions between ordinary YAML lines.
+{{- range $index, $item := .Values.items }}
+items:
+  - index: "{{$index}}"
+    value: "{{$item}}"
+{{- else }}
+items: []
+{{- end }}
+
+# This final action has no closing delimiter. It remains host-owned and should
+# receive no template-specific face through the end of the buffer.
+unfinished: {{if .Values.missing
