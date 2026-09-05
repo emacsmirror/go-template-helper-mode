@@ -6,6 +6,12 @@ major mode without replacing that mode's editing behavior.  It is intended for
 Helm charts, YAML manifests, HTML, and other files that embed complete
 ={{ ... }}= actions.
 
+Version 2.0.0 is recommended over 1.x for new and existing users.  It fixes
+action scoping and host-language face conflicts and follows the current Go
+template vocabulary.  =go-template-helper-mode= 2.0.0 requires
+=go-template-mode= 2.0.0 or later.  For existing MELPA installations, upgrade
+=go-template-mode= first and then the helper.
+
 * Features
 
 - Highlights complete Go template actions, comments, strings, variables,
